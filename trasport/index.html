@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dushanbe Public Transport Tracking App</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Leaflet CSS for the map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+
+
+<style>
+    /* Reset some default styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+}
+
+/* Header styles */
+header {
+    background-color: #7ed957;
+    color: white;
+    padding: 0px;
+    text-align: center;
+}
+
+#logo {
+    max-width: 300px;
+    margin-top: 0px;
+    margin-right: 0px;
+}
+
+/* Main content styles */
+main {
+    padding: 20px;
+}
+
+/* Map styles */
+#map {
+    height: 400px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Search container styles */
+.search-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#search-bar {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+#search-button {
+    padding: 10px 15px;
+    background-color: #7ed957;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#search-button:hover {
+    background-color: #7ed957;
+}
+
+/* Route info styles */
+#route-info {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#route-info h2 {
+    margin-bottom: 10px;
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #f1f1f1;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.suggestions {
+    border: 1px solid #ccc;
+    background-color: white;
+    position: absolute;
+    z-index: 1000;
+    width: calc(100% - 40px);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+</style>
+
+
+
+
+
+
+<body>
+    <header>
+        <img src="Dushanbe Public Transport Tracker.png" alt="Logo" id="logo">
+    </header>
+    <main>
+        <div id="map"></div>
+        <div class="search-container">
+            <input type="text" id="search-bar" placeholder="Search for bus number or destination">
+            <button id="search-button">Search</button>
+        </div>
+        <div id="suggestions" class="suggestions"></div>
+        <div id="info-panel">
+            <h3>Rout information</h3>
+            <div id="route-info"> </div>
+        </div>
+        <div id="loading" class="loading" style="display: none;">Loading...</div>
+    </main>
+    <footer>
+        <p>© 2025 Dushanbe Transit App. All rights reserved.</p>
+        <p>Contact: mavzuna14012008@gmail.com</p>
+    </footer>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+
+
+
+
+<script>
+    // Placeholder for JavaScript code
+console.log("Dushanbe Public Transport Tracking App is running!");
+
+// Initialize the map
+const map = L.map('map').setView([38.5599, 68.7870], 13); // Centered on Dushanbe
+
+// Add OpenStreetMap tile layer
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// Example bus stop data
+const busStops = [
+    { name: "Rudaki Avenue", coords: [38.5735, 68.7738] },
+    { name: "Somoni Avenue", coords: [38.5668, 68.7810] },
+    { name: "Ayni Street", coords: [38.5806, 68.7467] },
+    { name: "Dushanbe I Train Station", coords: [38.5598, 68.7963] },
+    { name: "Circus", coords: [38.5800, 68.7645] },
+    { name: "War Memorial", coords: [38.5822, 68.7690] },
+    { name: "Ismoil Somoni Street", coords: [38.5870, 68.7715] },
+    { name: "82nd Microdistrict", coords: [38.6100, 68.7750] },
+    { name: "102nd Microdistrict", coords: [38.6200, 68.7800] },
+    { name: "Barakat Bazaar", coords: [38.5580, 68.7860] },
+    { name: "Sakhovat Market Terminal", coords: [38.5260, 68.7760] },
+    { name: "Korvon Market Terminal", coords: [38.5230, 68.7700] },
+    { name: "Terminal Khujand", coords: [38.6500, 68.8000] },
+    { name: "Polytechnic Institute Terminal", coords: [38.5700, 68.7400] },
+    { name: "Sari Osiyo Mosque", coords: [38.5900, 68.7600] },
+    { name: "Ismaili Centre", coords: [38.5885, 68.7730] },
+    { name: "St. Nicholas Cathedral", coords: [38.5800, 68.7500] },
+    { name: "Fort Hissar", coords: [38.5000, 68.5500] },
+    { name: "Dom Pechot Intersection", coords: [38.5700, 68.7600] },
+    { name: "Dushanbe Airport", coords: [38.5448, 68.8242] },
+];
+
+
+// Add markers for each bus stop
+busStops.forEach(stop => {
+    const busCount = Math.floor(Math.random() * 5); // Random bus count for demonstration
+    L.marker(stop.coords)
+        .addTo(map)
+        .bindPopup(`${stop.name}<br>Buses arriving: ${busCount}`)
+        .openPopup();
+});
+
+// Function to handle geolocation
+function handleGeolocation(position) {
+    const userCoords = [position.coords.latitude, position.coords.longitude];
+    L.marker(userCoords)
+        .addTo(map)
+        .bindPopup("You are here!")
+        .openPopup();
+    map.setView(userCoords, 13); // Center the map on the user's location
+}
+
+// Check if geolocation is supported
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(handleGeolocation, (error) => {
+        console.error("Geolocation error: ", error);
+        alert("Unable to retrieve your location. Please check your settings.");
+    });
+} else {
+    alert("Geolocation is not supported by this browser.");
+}
+
+// Mock bus data
+const buses = [
+    { id: 1, coords: [38.6500, 68.8000], route: "Route 1" }, // Vodanasos (Starting Point)
+    { id: 2, coords: [38.5598, 68.7963], route: "Route 1" }, // Dushanbe Train Station
+    { id: 3, coords: [38.5260, 68.7760], route: "Route 1" }, // Southern Dushanbe (Ending Point)
+    
+    { id: 4, coords: [38.5870, 68.7715], route: "Route 2" }, // Ismoil Somoni Monument
+    { id: 5, coords: [38.5800, 68.7645], route: "Route 2" }, // Dushanbe Circus
+    { id: 6, coords: [38.5448, 68.8242], route: "Route 2" }, // Airport Road (Ending Point)
+    
+    { id: 7, coords: [38.5700, 68.7400], route: "Route 4" }, // Polytechnic Institute Terminal
+    { id: 8, coords: [38.5822, 68.7690], route: "Route 4" }, // War Memorial
+    { id: 9, coords: [38.5900, 68.8000], route: "Route 4" }, // Zarnisor Station (Ending Point)
+    
+    { id: 10, coords: [38.5806, 68.7467], route: "Route 8" }, // Ayni Street
+    { id: 11, coords: [38.5598, 68.7963], route: "Route 8" }, // Dushanbe I Train Station
+    { id: 12, coords: [38.5230, 68.7700], route: "Route 8" }, // Korvon Market Terminal (Ending Point)
+    
+    { id: 13, coords: [38.6100, 68.7750], route: "Route 10" }, // 82nd Microdistrict
+    { id: 14, coords: [38.5800, 68.7645], route: "Route 10" }, // Circus
+    { id: 15, coords: [38.5580, 68.7860], route: "Route 10" }  // Barakat Bazaar (Ending Point)
+];
+
+// Create a map to hold bus markers
+const busMarkers = {};
+
+// Custom Bus Icon
+const busIcon = L.icon({
+            iconUrl: 'bus-stop.png', // Path to your bus icon image
+            iconSize: [32, 32],     // Icon size
+            iconAnchor: [16, 32],   // Anchor point (center bottom)
+            popupAnchor: [0, -30]   // Popup anchor
+        });
+
+// Function to update bus positions
+function updateBusPositions() {
+    buses.forEach(bus => {
+        // Simulate bus movement by randomly changing coordinates
+        bus.coords[0] += (Math.random() - 0.5) * 0.001; // Change latitude
+        bus.coords[1] += (Math.random() - 0.5) * 0.001; // Change longitude
+
+        // If the bus marker doesn't exist, create it
+        if (!busMarkers[bus.id]) {
+            busMarkers[bus.id] = L.marker(bus.coords, { icon: busIcon })
+                .addTo(map)
+                .bindPopup(`Bus ID: ${bus.id}, ${bus.route}`)
+                .openPopup();
+        } else {
+            // Update the existing bus marker position
+            busMarkers[bus.id].setLatLng(bus.coords);
+        }
+    });
+}
+
+// Update bus positions every 5 seconds
+setInterval(updateBusPositions, 5000);
+
+// Function to search for a destination
+function searchDestination() {
+    const query = document.getElementById('search-bar').value.toLowerCase();
+    const landmarks = [
+    { 
+        name: "National Museum of Tajikistan", 
+        coords: [38.5675, 68.7821],
+        info: 'Opened in 1934. Working hours: 09:00 AM - 05:00 PM.',
+        photo: 'museum.jpg',
+        busRoutes: [3, 8, 29]
+    },
+    { 
+        name: "Flagpole of Dushanbe", 
+        coords: [38.5673, 68.7830],
+        info: 'Opened in 2008. Working hours: 24/7.',
+        photo: 'flagpole.jpg',
+        busRoutes: [2, 5, 12]
+    },
+    { 
+        name: "Kokhi Navruz", 
+        coords: [38.5687, 68.7795],
+        info: 'Opened in 2009. Working hours: 09:00 AM - 09:00 PM.',
+        photo: 'kokhi_navruz.jpg',
+        busRoutes: [1, 6, 15]
+    },
+    { 
+        name: "Ismaili Centre Dushanbe", 
+        coords: [38.5811, 68.7803],
+        info: 'Opened in 2013. Working hours: 08:00 AM - 06:00 PM.',
+        photo: 'ismaili_centre.jpg',
+        busRoutes: [4, 10, 18]
+    },
+    { 
+        name: "Dushanbe Opera and Ballet Theatre", 
+        coords: [38.5790, 68.7915],
+        info: 'Opened in 2012. Working hours: 10:00 AM - 06:00 PM.',
+        photo: 'opera_theatre.jpg',
+        busRoutes: [3, 7, 11]
+    },
+    { 
+        name: "Victory Park", 
+        coords: [38.5773, 68.8182],
+        info: 'Opened in 1975. Working hours: 08:00 AM - 10:00 PM.',
+        photo: 'victory_park.jpg',
+        busRoutes: [2, 9, 14]
+    },
+    { 
+        name: "Botanical Garden of Dushanbe", 
+        coords: [38.5798, 68.7931],
+        info: 'Opened in 1960. Working hours: 09:00 AM - 05:00 PM.',
+        photo: 'botanical_garden.jpg',
+        busRoutes: [1, 5, 22]
+    },
+    { 
+        name: "Somoni Monument", 
+        coords: [38.5780, 68.7885],
+        info: 'Opened in 1999. Working hours: 24/7.',
+        photo: 'somoni_monument.jpg',
+        busRoutes: [3, 6, 12]
+    },
+    { 
+        name: "Dushanbe Zoo", 
+        coords: [38.5705, 68.8028],
+        info: 'Opened in 1967. Working hours: 09:00 AM - 06:00 PM.',
+        photo: 'dushanbe_zoo.jpg',
+        busRoutes: [8, 15, 17]
+    },
+    { 
+        name: "Tajikistan National Library", 
+        coords: [38.5739, 68.7877],
+        info: 'Opened in 2011. Working hours: 09:00 AM - 07:00 PM.',
+        photo: 'national_library.jpg',
+        busRoutes: [4, 10, 13]
+    },
+    { 
+        name: "Rohat Tea House", 
+        coords: [38.5764, 68.7913],
+        info: 'Opened in 2005. Working hours: 10:00 AM - 11:00 PM.',
+        photo: 'rohat_tea_house.jpg',
+        busRoutes: [5, 9, 16]
+    },
+    { 
+        name: "Dushanbe Central Mosque", 
+        coords: [38.5638, 68.7714],
+        info: 'Opened in 2010. Working hours: 05:00 AM - 10:00 PM.',
+        photo: 'central_mosque.jpg',
+        busRoutes: [3, 11, 14]
+    },
+    { 
+        name: "Mehrgon Market", 
+        coords: [38.5825, 68.7906],
+        info: 'Opened in 2001. Working hours: 07:00 AM - 07:00 PM.',
+        photo: 'mehrgon_market.jpg',
+        busRoutes: [2, 6, 12]
+    },
+    { 
+        name: "Sadbarg Shopping Center", 
+        coords: [38.5793, 68.7902],
+        info: 'Opened in 2015. Working hours: 10:00 AM - 09:00 PM.',
+        photo: 'sadbarg_shopping.jpg',
+        busRoutes: [7, 9, 18]
+    },
+    { 
+        name: "Dusti Square", 
+        coords: [38.5781, 68.7883],
+        info: 'Opened in 1961. Working hours: 24/7.',
+        photo: 'dusti_square.jpg',
+        busRoutes: [3, 8, 13]
+    },
+    { 
+        name: "Korvon Market", 
+        coords: [38.5175, 68.7439],
+        info: 'Opened in 2003. Working hours: 07:00 AM - 06:00 PM.',
+        photo: 'korvon_market.jpg',
+        busRoutes: [2, 6, 14]
+    },
+    { 
+        name: "Barakat Market", 
+        coords: [38.5641, 68.7859],
+        info: 'Opened in 1998. Working hours: 08:00 AM - 07:00 PM.',
+        photo: 'barakat_market.jpg',
+        busRoutes: [5, 10, 16]
+    },
+    { 
+        name: "Guliston Park", 
+        coords: [38.5720, 68.7900],
+        info: 'Opened in 1980. Working hours: 09:00 AM - 08:00 PM.',
+        photo: 'guliston_park.jpg',
+        busRoutes: [3, 6, 12]
+    },
+    { 
+        name: "Sakhovat Market", 
+        coords: [38.5524, 68.7809],
+        info: 'Opened in 2000. Working hours: 07:00 AM - 05:00 PM.',
+        photo: 'sakhovat_market.jpg',
+        busRoutes: [1, 4, 11]
+    },
+    { 
+        name: "Парк Рудаки", 
+        coords: [38.5764, 68.7808],
+        info: 'Opened in 1960. Working hours: 07:00 AM - 10:00 PM.',
+        photo: 'rudaki.jpg',
+        busRoutes: [1, 5, 22]
+    }
+];
+
+
+    // Clear previous markers
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.getPopup()) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Find matching landmarks
+    const foundLandmarks = landmarks.filter(landmark => landmark.name.toLowerCase().includes(query));
+
+    // Add markers for found landmarks
+    foundLandmarks.forEach(landmark => {
+        L.marker(landmark.coords)
+            .addTo(map)
+            .bindPopup(landmark.name)
+            .openPopup();
+    });
+
+    // If a landmark is found, center the map on it
+    if (foundLandmarks.length > 0) {
+        const firstLandmark = foundLandmarks[0];
+        map.setView(firstLandmark.coords, 13)}}
+
+    const landmarks = [
+    { 
+        name: "National Museum of Tajikistan", 
+        coords: [38.5675, 68.7821],
+        info: 'Opened in 1934. Working hours: 09:00 AM - 05:00 PM.',
+        photo: 'museum.jpg',
+        busRoutes: [3, 8, 29]
+    },
+    { 
+        name: "Flagpole of Dushanbe", 
+        coords: [38.5673, 68.7830],
+        info: 'Opened in 2008. Working hours: 24/7.',
+        photo: 'flagpole.jpg',
+        busRoutes: [2, 5, 12]
+    },
+    { 
+        name: "Kokhi Navruz", 
+        coords: [38.5687, 68.7795],
+        info: 'Opened in 2009. Working hours: 09:00 AM - 09:00 PM.',
+        photo: 'kokhi_navruz.jpg',
+        busRoutes: [1, 6, 15]
+    },
+    { 
+        name: "Ismaili Centre Dushanbe", 
+        coords: [38.5811, 68.7803],
+        info: 'Opened in 2013. Working hours: 08:00 AM - 06:00 PM.',
+        photo: 'ismaili_centre.jpg',
+        busRoutes: [4, 10, 18]
+    },
+    { 
+        name: "Dushanbe Opera and Ballet Theatre", 
+        coords: [38.5790, 68.7915],
+        info: 'Opened in 2012. Working hours: 10:00 AM - 06:00 PM.',
+        photo: 'opera_theatre.jpg',
+        busRoutes: [3, 7, 11]
+    },
+    { 
+        name: "Victory Park", 
+        coords: [38.5773, 68.8182],
+        info: 'Opened in 1975. Working hours: 08:00 AM - 10:00 PM.',
+        photo: 'victory_park.jpg',
+        busRoutes: [2, 9, 14]
+    },
+    { 
+        name: "Botanical Garden of Dushanbe", 
+        coords: [38.5798, 68.7931],
+        info: 'Opened in 1960. Working hours: 09:00 AM - 05:00 PM.',
+        photo: 'botanical_garden.jpg',
+        busRoutes: [1, 5, 22]
+    },
+    { 
+        name: "Somoni Monument", 
+        coords: [38.5780, 68.7885],
+        info: 'Opened in 1999. Working hours: 24/7.',
+        photo: 'somoni_monument.jpg',
+        busRoutes: [3, 6, 12]
+    },
+    { 
+        name: "Dushanbe Zoo", 
+        coords: [38.5705, 68.8028],
+        info: 'Opened in 1967. Working hours: 09:00 AM - 06:00 PM.',
+        photo: 'dushanbe_zoo.jpg',
+        busRoutes: [8, 15, 17]
+    },
+    { 
+        name: "Tajikistan National Library", 
+        coords: [38.5739, 68.7877],
+        info: 'Opened in 2011. Working hours: 09:00 AM - 07:00 PM.',
+        photo: 'national_library.jpg',
+        busRoutes: [4, 10, 13]
+    },
+    { 
+        name: "Rohat Tea House", 
+        coords: [38.5764, 68.7913],
+        info: 'Opened in 2005. Working hours: 10:00 AM - 11:00 PM.',
+        photo: 'rohat_tea_house.jpg',
+        busRoutes: [5, 9, 16]
+    },
+    { 
+        name: "Dushanbe Central Mosque", 
+        coords: [38.5638, 68.7714],
+        info: 'Opened in 2010. Working hours: 05:00 AM - 10:00 PM.',
+        photo: 'central_mosque.jpg',
+        busRoutes: [3, 11, 14]
+    },
+    { 
+        name: "Mehrgon Market", 
+        coords: [38.5825, 68.7906],
+        info: 'Opened in 2001. Working hours: 07:00 AM - 07:00 PM.',
+        photo: 'mehrgon_market.jpg',
+        busRoutes: [2, 6, 12]
+    },
+    { 
+        name: "Sadbarg Shopping Center", 
+        coords: [38.5793, 68.7902],
+        info: 'Opened in 2015. Working hours: 10:00 AM - 09:00 PM.',
+        photo: 'sadbarg_shopping.jpg',
+        busRoutes: [7, 9, 18]
+    },
+    { 
+        name: "Dusti Square", 
+        coords: [38.5781, 68.7883],
+        info: 'Opened in 1961. Working hours: 24/7.',
+        photo: 'dusti_square.jpg',
+        busRoutes: [3, 8, 13]
+    },
+    { 
+        name: "Korvon Market", 
+        coords: [38.5175, 68.7439],
+        info: 'Opened in 2003. Working hours: 07:00 AM - 06:00 PM.',
+        photo: 'korvon_market.jpg',
+        busRoutes: [2, 6, 14]
+    },
+    { 
+        name: "Barakat Market", 
+        coords: [38.5641, 68.7859],
+        info: 'Opened in 1998. Working hours: 08:00 AM - 07:00 PM.',
+        photo: 'barakat_market.jpg',
+        busRoutes: [5, 10, 16]
+    },
+    { 
+        name: "Guliston Park", 
+        coords: [38.5720, 68.7900],
+        info: 'Opened in 1980. Working hours: 09:00 AM - 08:00 PM.',
+        photo: 'guliston_park.jpg',
+        busRoutes: [3, 6, 12]
+    },
+    { 
+        name: "Sakhovat Market", 
+        coords: [38.5524, 68.7809],
+        info: 'Opened in 2000. Working hours: 07:00 AM - 05:00 PM.',
+        photo: 'sakhovat_market.jpg',
+        busRoutes: [1, 4, 11]
+    },
+    { 
+        name: "Парк Рудаки", 
+        coords: [38.5764, 68.7808],
+        info: 'Opened in 1960. Working hours: 07:00 AM - 10:00 PM.',
+        photo: 'rudaki.jpg',
+        busRoutes: [1, 5, 22]
+    }
+    ];
+
+        
+        document.getElementById('search-bar').addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            const suggestions = landmarks.filter(landmark => landmark.name.toLowerCase().includes(query));
+            displaySuggestions(suggestions);
+        });
+        
+        function displaySuggestions(suggestions) {
+            const suggestionsContainer = document.getElementById('suggestions');
+            suggestionsContainer.innerHTML = ''; // Clear previous suggestions
+        
+            suggestions.forEach(suggestion => {
+                const div = document.createElement('div');
+                div.classList.add('suggestion-item', 'fade-in');
+                div.textContent = suggestion.name;
+                div.onclick = () => {
+                    document.getElementById('search-bar').value = suggestion.name;
+                    suggestionsContainer.innerHTML = ''; // Clear suggestions
+                    searchDestination(); // Call the search function
+                };
+                suggestionsContainer.appendChild(div);
+            });
+        }
+        // Display suggestions
+    foundLandmarks.forEach(landmark => {
+        const suggestionItem = document.createElement('div');
+        suggestionItem.classList.add('suggestion-item');
+        suggestionItem.textContent = landmark.name;
+        suggestionItem.onclick = () => displayLandmarkInfo(landmark);
+        suggestionsContainer.appendChild(suggestionItem);
+    });
+
+    // Function to display selected landmark's information
+    function displayLandmarkInfo(landmark) {
+    const routeInfoContainer = document.getElementById('route-info');
+    routeInfoContainer.innerHTML = `
+        <h2>${landmark.name}</h2>
+        <p><strong>Info:</strong> ${landmark.info}</p>
+        <p><strong>Bus Routes:</strong> ${landmark.busRoutes.join(', ')}</p>
+        <img src="${landmark.photo}" alt="${landmark.name}" style="width: 100%; height: auto;">
+    `;}
+
+        document.getElementById('loading').style.display = 'block'; // Show loading
+        // Simulate loading time
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none'; // Hide loading
+        }, 1000); // Adjust time as needed
+</script>
+
+</html>
